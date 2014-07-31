@@ -1,11 +1,5 @@
 <?php
 
-//hook_menu
-function pdonline_questions_init()
-{
-
-}
-
 function pdonline_questions_menu()
 {
 	$items = array();
@@ -18,6 +12,17 @@ function pdonline_questions_menu()
 		'access callback' => 'user_access',
 		'access arguments' => array('access content'),
 		'type' => MENU_NORMAL_ITEM
+	);
+
+	$items['report'] = array
+	(
+		//'title' => 'Questions',
+		//'description' => 'Answer all the questions',
+		'page callback' => 'questions_report',
+		//'page arguments' => array('questions_form'),
+		'access callback' => 'user_access',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
 	);
 	return $items;
 }
@@ -75,15 +80,59 @@ function questions_form()
 		'#value' => 'Submit'
 	);
 
-	$form['#submit'][] = 'pdonline_questions_submit';
-
 	return $form;
 }
 
-
-function pdonline_questions_submit($form, &$form_state)
+function questions_form_validate($form, &$form_state)
 {
-	drupal_set_message("It worked");
+	if($form_state['values']['divisible'] == "")
+	{
+		form_set_error('divisible', 'Q1 is empty');
+	}
+
+	if($form_state['values']['factorial'] == "")
+	{
+		form_set_error('factorial', 'Q2 is empty');
+	}
+
+	if(!is_numeric($form_state['values']['factorial']))
+	{
+		form_set_error('factorial', 'Q2 answer can only be numeric');
+	}
+
+	if($form_state['values']['bits'] == "")
+	{
+		form_set_error('bits', 'Q3 is empty');
+	}
+
+	if(($form_state['values']['bits'] != "0") && ($form_state['values']['bits'] != "1"))
+	{
+		if((strpos($form_state['values']['bits'],'0') === false) || (strpos($form_state['values']['bits'],'1') === false))
+		{
+			form_set_error('bits', 'Q3 answer can only be binary');
+		}
+	}
+
+	if($form_state['values']['words'] == "")
+	{
+		form_set_error('words', 'Q4 is empty');
+	}
+
+	if($form_state['values']['html'] == "")
+	{
+		form_set_error('html', 'Q5 is empty');
+	}
+}
+
+
+function questions_form_submit($form, &$form_state)
+{
+		$form_state['redirect'] = 'report';
+}
+
+function questions_report()
+{
+	echo "Hello";
 }
 
 function getOneYX(&$oneX, &$oneY)
