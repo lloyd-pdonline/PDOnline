@@ -209,13 +209,13 @@ function questions_report()
 		(
 			'#type' => 'hidden', 
 			'#value' => $row['firstName']." ".$row['lastName'].
-					" 1 ".$row['questionOne'].
-					" 2 ".$row['questionTwo'].
-					" 3 ".$row['questionThree'].
-					" 4 ".$row['questionFour'].
-					" 5 ".$row['questionFive'].
-					" tScore ".$row['totalScore'].
-					" pScore ".$row['percentageScore']
+					" - Q1 ".$row['questionOne'].
+					" - Q2 ".$row['questionTwo'].
+					" - Q3 ".$row['questionThree'].
+					" - Q4 ".$row['questionFour'].
+					" - Q5 ".$row['questionFive'].
+					" - Total Score ".$row['totalScore'].
+					" - Percentage Score ".$row['percentageScore']
 					
 	);
 	}
@@ -224,26 +224,48 @@ function questions_report()
 	$form['textFile'] = array
 	(
 		'#type' => 'textfield',
-		'#title' => 'Enter fileName? '
+		'#title' => 'Enter fileName '
 	);
 
-	$form['submit'] = array
+	$form['actions']['submit'] = array
 	(
 		'#type' => 'submit',
-		'#value' => 'Submit'
+		'#value' => 'import'
 	);
 
-	$form['#submit'][]='questions_report_submit';
+	$form['actions']['submit2'] = array
+	(
+		'#type' => 'submit',
+		'#value' => 'export',
+		'#submit' => array('questions_report_export')
+	);
 	return $form;
 }
 
 function questions_report_submit($form, &$form_state)
 {
+	
 	$file = fopen($_SERVER['DOCUMENT_ROOT']."/".$form_state['values']['textFile'].'.txt',"w");
 	fwrite($file, $form_state['values']['contents']);
 	fclose($file);
-	drupal_set_message('Saved');
+	drupal_set_message("Saved");
 }
+
+function questions_report_export($form, &$form_state)
+{
+	$i = 0;
+	$file = fopen($_SERVER['DOCUMENT_ROOT']."/".$form_state['values']['textFile'].'.txt',"r");
+	$contents = fread($file, filesize($_SERVER['DOCUMENT_ROOT']."/".$form_state['values']['textFile'].'.txt'));
+	$tags = explode(" - ", $contents);
+	foreach($tags as $tag)
+	{
+		$words[$i] = $tag;
+		$i++;
+	}
+	fclose($file);
+	drupal_set_message($words[0]);
+}
+
 
 function getOneYX(&$oneX, &$oneY)
 {
