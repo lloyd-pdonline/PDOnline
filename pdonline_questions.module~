@@ -3,6 +3,15 @@
 function pdonline_questions_menu()
 {
 	$items = array();
+	$items['identity'] = array
+	(
+		'title' => 'PDOnline',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('identity_form'),
+		'access callback' => 'user_access',
+		'access arguments' => array('access content'),
+		'type' => MENU_NORMAL_ITEM
+	);
 	$items['questions'] = array
 	(
 		'title' => 'Questions',
@@ -11,13 +20,12 @@ function pdonline_questions_menu()
 		'page arguments' => array('questions_form'),
 		'access callback' => 'user_access',
 		'access arguments' => array('access content'),
-		'type' => MENU_NORMAL_ITEM
+		'type' => MENU_CALLBACK
 	);
 
 	$items['report'] = array
 	(
-		//'title' => 'Questions',
-		//'description' => 'Answer all the questions',
+		'title' => 'Result',
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('questions_report'),
 		'access callback' => 'user_access',
@@ -25,6 +33,74 @@ function pdonline_questions_menu()
 		'type' => MENU_CALLBACK
 	);
 	return $items;
+}
+
+function identity_form()
+{
+	$form = array();
+	$form['id'] = array
+	(
+		'#type' => 'textfield',
+		'#title' => 'User ID '
+	);
+
+	$form['firstName'] = array
+	(
+		'#type' => 'textfield',
+		'#title' => 'First Name'
+	);
+
+	$form['lastName'] = array
+	(
+		'#type' => 'textfield',
+		'#title' => 'Last Name '
+	);
+
+	$form['submit'] = array
+	(
+		'#type' => 'submit',
+		'#value' => 'Submit'
+	);
+
+	$form['#submit'][]='identity_form_submit';
+
+	return $form;
+}
+
+function identity_form_validate($form, &$form_state)
+{
+	$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
+	if(mysqli_connect_errno())
+	{
+		drupal_set_message("Failed to connect " . mysqli_connect_error);
+	}
+	$results = mysqli_query($con, "SELECT id FROM QuestionUsers;");
+	while($row = mysqli_fetch_array($results))
+	{
+		if($row['id'] == $form_state['values']['id'])
+		{
+			form_set_error('id', 'ID Already exists. Please create a new one');
+		}
+	}
+	mysqli_close($con);
+}
+
+function identity_form_submit($form, &$form_state)
+{
+	$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
+	$id = $form_state['values']['id'];
+	$firstName = $form_state['values']['firstName'];
+	$lastName = $form_state['values']['lastName'];
+	if(mysqli_connect_errno())
+	{
+		drupal_set_message("Failed to connect " . mysqli_connect_error);
+	}
+	$sql = mysqli_query($con, "INSERT INTO QuestionUsers(id,firstName,lastName)
+						VALUES ('$id','$firstName','$lastName')");
+
+
+	mysqli_close($con);
+	$form_state['redirect'] = 'questions';
 }
 
 function questions_form($form, &$form_state)
