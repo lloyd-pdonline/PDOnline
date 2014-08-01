@@ -11,15 +11,15 @@ function pdonline_questions_menu()
 		'page arguments' => array('questions_form'),
 		'access callback' => 'user_access',
 		'access arguments' => array('access content'),
-		'type' => MENU_CALLBACK
+		'type' => MENU_NORMAL_ITEM
 	);
 
 	$items['report'] = array
 	(
 		//'title' => 'Questions',
 		//'description' => 'Answer all the questions',
-		'page callback' => 'questions_report',
-		//'page arguments' => array('questions_form'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('questions_report'),
 		'access callback' => 'user_access',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK
@@ -27,7 +27,7 @@ function pdonline_questions_menu()
 	return $items;
 }
 
-function questions_form()
+function questions_form($form, &$form_state)
 {
 	$oneN = rand(1,100);
 	$twoN = rand(1,10);
@@ -135,17 +135,19 @@ function questions_form_validate($form, &$form_state)
 
 function questions_form_submit($form, &$form_state)
 {
-		//$form_state['redirect'] = 'report';
 		$oneResult = checkDivisible($form_state['values']['oneN'], $form_state['values']['oneX'], $form_state['values']['oneY'], $form_state['values']['divisible']);
-		drupal_set_message("1) " . $oneResult);
+		//drupal_set_message("1) " . $oneResult);
 		$twoResult = checkFactorial($form_state['values']['twoN'], $form_state['values']['factorial']);
-		drupal_set_message("2) " . $twoResult);
+		//drupal_set_message("2) " . $twoResult);
 		$threeResult = checkBits($form_state['values']['threeN'], $form_state['values']['bits']);
-		drupal_set_message("3) " . $threeResult);
+		//drupal_set_message("3) " . $threeResult);
 		$fourResult = checkWords($form_state['values']['fourC'], $form_state['values']['words']);
-		drupal_set_message("4) " . $fourResult);
+		//drupal_set_message("4) " . $fourResult);
 		$fiveResult = checkHtml($form_state['values']['fiveN'], $form_state['values']['html']);
-		drupal_set_message("4) " . $fiveResult);
+		//drupal_set_message("4) " . $fiveResult);
+
+		getScores($oneResult, $twoResult, $threeResult, $fourResult, $fiveResult, $totalScore, $percentageScore);
+		//drupal_set_message($totalScore . " and " . $percentageScore);
 
 		$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
 		if(mysqli_connect_errno())
@@ -153,17 +155,94 @@ function questions_form_submit($form, &$form_state)
 			drupal_set_message("Failed to connect " . mysqli_connect_error);
 		}
 		$sql = mysqli_query($con, "INSERT INTO Results(id,questionOne,questionTwo,questionThree,questionFour,questionFive,totalScore,percentageScore)
-							VALUES (0,'Correct','Correct','Correct','Correct','Correct',5,100)");
-		if(!mysqli_query($con,$sql))
-		{
-			die('Error: '. mysqli_error($con));
-		}
-		mysqli_close($con); 							
+							VALUES (0,'$oneResult','$twoResult','$threeResult','$fourResult','$fiveResult','$totalScore','$percentageScore')");
+		mysqli_close($con);
+		$form_state['redirect'] = 'report'; 							
 }
 
 function questions_report()
 {
-	echo "Hello";
+	$form = array();	
+	$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
+	if(mysqli_connect_errno())
+	{
+		drupal_set_message("Failed to connect " . mysqli_connect_error);
+	}
+	$results = mysqli_query($con, "SELECT *
+    								FROM QuestionUsers, Results
+    								WHERE QuestionUsers.resultID = Results.id AND QuestionUsers.id = 'lloyd4567';");
+	while($row = mysqli_fetch_array($results))
+	{
+		$form['html'] = array
+		(
+			'#markup' =>
+		"Name: " . $row['firstName'] . " " . $row['lastName'] . "<hr/>".
+		"<table style='width:500px'>".
+			"<th align='left'>Question</th>".
+			"<th align='left'>Result</th>".
+			"<tr>".
+				"<td>1</td>".
+				"<td>".$row['questionOne']."</td>".
+			"</tr>".
+			"<tr>".
+				"<td>2</td>".
+				"<td>".$row['questionTwo']."</td>".
+			"</tr>".
+			"<tr>".
+				"<td>3</td>".
+				"<td>".$row['questionThree']."</td>".
+			"</tr>".
+			"<tr>".
+				"<td>4</td>".
+				"<td>".$row['questionFour']."</td>".
+			"</tr>".
+			"<tr>".
+				"<td>5</td>".
+				"<td>".$row['questionFive']."</td>".
+			"</tr>".
+		"</table>".
+		"<hr/> Total Score: " . $row['totalScore'] . "/5".
+		"Percentage Score: " . $row['percentageScore'] . " %<br /><hr />"
+		);
+
+		$form['contents'] = array
+		(
+			'#type' => 'hidden', 
+			'#value' => $row['firstName']." ".$row['lastName'].
+					" 1 ".$row['questionOne'].
+					" 2 ".$row['questionTwo'].
+					" 3 ".$row['questionThree'].
+					" 4 ".$row['questionFour'].
+					" 5 ".$row['questionFive'].
+					" tScore ".$row['totalScore'].
+					" pScore ".$row['percentageScore']
+					
+	);
+	}
+	mysqli_close($con);
+
+	$form['textFile'] = array
+	(
+		'#type' => 'textfield',
+		'#title' => 'Enter fileName? '
+	);
+
+	$form['submit'] = array
+	(
+		'#type' => 'submit',
+		'#value' => 'Submit'
+	);
+
+	$form['#submit'][]='questions_report_submit';
+	return $form;
+}
+
+function questions_report_submit($form, &$form_state)
+{
+	$file = fopen($_SERVER['DOCUMENT_ROOT']."/".$form_state['values']['textFile'].'.txt',"w");
+	fwrite($file, $form_state['values']['contents']);
+	fclose($file);
+	drupal_set_message('Saved');
 }
 
 function getOneYX(&$oneX, &$oneY)
@@ -253,5 +332,21 @@ function checkHtml($fiveN, $userAns)
 		$result = "Correct";
 	}
 	return $result;
+}
+
+function getScores($oneResult, $twoResult, $threeResult, $fourResult, $fiveResult, &$totalScore, &$percentageScore)
+{
+	$totalScore = 0;
+	if($oneResult == 'Correct')
+		$totalScore++;
+	if($twoResult == 'Correct')
+		$totalScore++;
+	if($threeResult == 'Correct')
+		$totalScore++;
+	if($fourResult == 'Correct')
+		$totalScore++;
+	if($fiveResult == 'Correct')
+		$totalScore++;
+	$percentageScore = round(($totalScore/5) * 100);
 }
 
