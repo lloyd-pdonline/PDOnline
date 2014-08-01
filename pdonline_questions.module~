@@ -3,6 +3,7 @@
 function pdonline_questions_menu()
 {
 	$items = array();
+	//Replicates logging ins
 	$items['identity'] = array
 	(
 		'title' => 'PDOnline',
@@ -12,9 +13,11 @@ function pdonline_questions_menu()
 		'access arguments' => array('access content'),
 		'type' => MENU_NORMAL_ITEM
 	);
+
+	//Contains all the questions to answer
 	$items['questions'] = array
 	(
-		'title' => 'Questions',
+		'title' => 'Questions - Please click "PDOnline" under the navigation to generate another question.',
 		'description' => 'Answer all the questions',
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('questions_form'),
@@ -23,9 +26,10 @@ function pdonline_questions_menu()
 		'type' => MENU_CALLBACK
 	);
 
+	//Contains the report along with import/export feature
 	$items['report'] = array
 	(
-		'title' => 'Result',
+		'title' => 'Result - Please click "PDOnline" under the navigation to generate another question.',
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('questions_report'),
 		'access callback' => 'user_access',
@@ -67,37 +71,15 @@ function identity_form()
 	return $form;
 }
 
-function identity_form_validate($form, &$form_state)
-{
-	/*$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
-	if(mysqli_connect_errno())
-	{
-		drupal_set_message("Failed to connect " . mysqli_connect_error);
-	}
-	$results = mysqli_query($con, "SELECT id FROM QuestionUsers;");
-	while($row = mysqli_fetch_array($results))
-	{
-		if($row['id'] == $form_state['values']['id'])
-		{
-			form_set_error('id', 'ID Already exists. Please create a new one');
-		}
-	}
-	mysqli_close($con);*/
-}
-
 function identity_form_submit($form, &$form_state)
 {
-	$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
+	/*Stores values in these variable to later be used when generating the questions.
+		The reason for randomizing in this function is to prevent any re-randomizing whenever
+		the question_form's "submit" is pressed
+	*/  
 	$id = $form_state['values']['id'];
 	$firstName = $form_state['values']['firstName'];
 	$lastName = $form_state['values']['lastName'];
-	if(mysqli_connect_errno())
-	{
-		drupal_set_message("Failed to connect " . mysqli_connect_error);
-	}
-	$sql = mysqli_query($con, "INSERT INTO QuestionUsers(id,firstName,lastName)
-						VALUES ('$id','$firstName','$lastName')");
-
 	$oneN = rand(1,100);
 	$twoN = rand(1,10);
 	$threeN = rand(1,100);
@@ -105,6 +87,15 @@ function identity_form_submit($form, &$form_state)
 	$fourC = chr(rand(97,122));
 	$fiveN = rand(1,5);
 	getOneYX($oneX, $oneY);
+
+	//Inserts the user's info into the database
+	$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
+	if(mysqli_connect_errno())
+	{
+		drupal_set_message("Failed to connect " . mysqli_connect_error);
+	}
+	$sql = mysqli_query($con, "INSERT INTO QuestionUsers(id,firstName,lastName)
+						VALUES ('$id','$firstName','$lastName')");
 
 	$options = array
 	(
@@ -122,11 +113,14 @@ function identity_form_submit($form, &$form_state)
 		)
 	);
 	mysqli_close($con);
+	
+	//Redirects to the questions page along with the parameters
 	$form_state['redirect'] = array('questions', $options);
 }
 
 function questions_form($form, &$form_state)
 {
+	//Obtains the values from the URL
 	$oneN = $_GET['oneN'];
 	$oneX = $_GET['oneX'];
 	$oneY = $_GET['oneY'];
@@ -222,10 +216,15 @@ function questions_form_validate($form, &$form_state)
 		form_set_error('bits', 'Q3 answer can only be numeric');
 	}
 
-
 	if($form_state['values']['words'] == "")
 	{
 		form_set_error('words', 'Q4 is empty');
+	}
+
+	$words = explode(" ", $form_state['values']['words']);
+	if(count($words) != $form_state['values']['fourN'])
+	{
+		form_set_error('words', $form_state['values']['fourN'].' words needed for Q3. You input '. count($words));
 	}
 
 	if($form_state['values']['html'] == "")
@@ -250,32 +249,45 @@ function questions_form_submit($form, &$form_state)
 		{
 			drupal_set_message("Failed to connect " . mysqli_connect_error);
 		}
+		//Performs a delete SQL to make sure one account only has one result
 		mysqli_query($con, "DELETE Results FROM Results,QuestionUsers
-							WHERE Results.userID = QuestionUsers.id");
+							WHERE Results.userID = '$id'");
 
+		//Inserts values into the Results table
 		$sql = mysqli_query($con, "INSERT INTO Results(id,questionOne,questionTwo,questionThree,questionFour,questionFive,totalScore,percentageScore,userID)
 							VALUES (0,'$oneResult','$twoResult','$threeResult','$fourResult','$fiveResult','$totalScore','$percentageScore','$id')");
 		mysqli_close($con);
-		$form_state['redirect'] = 'report'; 							
+
+		$options = array
+		(
+			'query' => array
+			(
+				'id' => $id,
+			)
+		);
+		$form_state['redirect'] = array('report', $options); 							
 }
 
 
 function questions_report()
 {
+	$id = $_GET['id'];
 	$form = array();	
 	$con = mysqli_connect("localhost","lloyd4567","pdonline4567","questions");
 	if(mysqli_connect_errno())
 	{
 		drupal_set_message("Failed to connect " . mysqli_connect_error);
 	}
+	//Obtains the User's result and displays it to the user
 	$results = mysqli_query($con, "SELECT *
     								FROM QuestionUsers, Results
-    								WHERE QuestionUsers.id = Results.userID;");
+    								WHERE Results.userID = '$id';");
 	while($row = mysqli_fetch_array($results))
 	{
 		$form['html'] = array
 		(
 			'#markup' =>
+		"<h1>Please click 'PDOnline' under the navigation to generate a set of question again</h1><br /><br /><hr />".
 		"Name: " . $row['firstName'] . " " . $row['lastName'] . "<hr/>".
 		"<table style='width:500px'>".
 			"<th align='left'>Question</th>".
@@ -321,6 +333,7 @@ function questions_report()
 	}
 	mysqli_close($con);
 
+	//Asks for the fileName to import/export to.
 	$form['textFile'] = array
 	(
 		'#type' => 'textfield',
@@ -342,6 +355,14 @@ function questions_report()
 	return $form;
 }
 
+function questions_report_validate($form, &$form_state)
+{
+	if($form_state['values']['textFile'] == "")
+	{
+		form_set_error('textFile', 'Please enter a file name');
+	}
+
+//Writes to the file
 function questions_report_submit($form, &$form_state)
 {
 	
@@ -349,8 +370,10 @@ function questions_report_submit($form, &$form_state)
 	fwrite($file, $form_state['values']['contents']);
 	fclose($file);
 	drupal_set_message("Saved");
+	drupal_set_message("<hr />Please click 'PDOnline' under the navigation to generate a set of question again");
 }
 
+//Reads the file
 function questions_report_export($form, &$form_state)
 {
 	$i = 0;
@@ -361,10 +384,11 @@ function questions_report_export($form, &$form_state)
 	{
 		drupal_set_message($tag);
 	}
+	drupal_set_message("<hr />Please click 'PDOnline' under the navigation to generate a set of question again");
 	fclose($file);
 }
 
-
+//Makes sure Y and X are not the same
 function getOneYX(&$oneX, &$oneY)
 {
 	do
@@ -374,6 +398,9 @@ function getOneYX(&$oneX, &$oneY)
 	}while($oneX === $oneY);
 }
 
+/*Functions below checks if the
+	user's answers are correct
+*/
 function checkDivisible($oneN, $oneX, $oneY, $userAns)
 {
 	$result = 'Incorrect';
@@ -418,8 +445,8 @@ function checkFactorial($twoN, $userAns)
 
 function checkBits($threeN, $userAns)
 {
-	$bitsEquivalent = decbin($threeN);
-	$ans = strlen($bitsEquivalent);
+	$bitsEquivalent = decbin($threeN); //Converts decimal to binary
+	$ans = strlen($bitsEquivalent); //obtains the length of the string
 	$result = "Incorrect";
 	if($userAns == $ans)
 	{
@@ -431,9 +458,10 @@ function checkBits($threeN, $userAns)
 function checkWords($fourC, $userAns)
 {
 	$result = "Correct";
-	$words = explode(" ", $userAns);
+	$words = explode(" ", $userAns); //Splits the words
 	foreach($words as $word)
 	{
+		//Checks if each word contains the character
 		if(strpos($word, $fourC) === false)
 		{
 			$result = "Incorrect";
@@ -442,6 +470,11 @@ function checkWords($fourC, $userAns)
 	return $result;
 }
 
+/*The way it checks is that it strips all html tags
+	and checks if PDOnline is actually written.
+	The initial plan was to split each tag but
+	I cannot think of a way to do it
+*/
 function checkHtml($fiveN, $userAns)
 {
 	$result = "Incorrect";
@@ -454,6 +487,7 @@ function checkHtml($fiveN, $userAns)
 	return $result;
 }
 
+/*Obtains the score of the user*/
 function getScores($oneResult, $twoResult, $threeResult, $fourResult, $fiveResult, &$totalScore, &$percentageScore)
 {
 	$totalScore = 0;
