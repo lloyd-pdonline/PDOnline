@@ -250,11 +250,15 @@ function questions_form_submit($form, &$form_state)
 		{
 			drupal_set_message("Failed to connect " . mysqli_connect_error);
 		}
+		mysqli_query($con, "DELETE Results FROM Results,QuestionUsers
+							WHERE Results.userID = QuestionUsers.id");
+
 		$sql = mysqli_query($con, "INSERT INTO Results(id,questionOne,questionTwo,questionThree,questionFour,questionFive,totalScore,percentageScore,userID)
 							VALUES (0,'$oneResult','$twoResult','$threeResult','$fourResult','$fiveResult','$totalScore','$percentageScore','$id')");
 		mysqli_close($con);
 		$form_state['redirect'] = 'report'; 							
 }
+
 
 function questions_report()
 {
@@ -355,11 +359,9 @@ function questions_report_export($form, &$form_state)
 	$tags = explode(" - ", $contents);
 	foreach($tags as $tag)
 	{
-		$words[$i] = $tag;
-		$i++;
+		drupal_set_message($tag);
 	}
 	fclose($file);
-	drupal_set_message($words[0]);
 }
 
 
@@ -383,7 +385,7 @@ function checkDivisible($oneN, $oneX, $oneY, $userAns)
 	{
 		$ans = 'P';
 	}
-	else if($oneN % $oneX == 0)
+	else if($oneN % $oneY == 0)
 	{
 		$ans = 'D';
 	}
